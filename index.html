@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="kr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Mendeleev's Game</title>
+    <style>
+        body {
+            background-color: rgb(201, 238, 255);
+        }
+
+        #field {
+            position: relative;
+            width: 90vw;
+            height: 90vh;
+            border: 2px solid #000;
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
+        }
+
+        .element-card {
+            position: absolute;
+            font-family: 'Pretendard', sans-serif;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            width: 140px;
+            height: 220px;
+            border-radius: 15px;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(1px);
+
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+
+            cursor: grab;
+        }
+
+        .element-card.dragging {
+            opacity: 0.8;
+            cursor: grabbing;
+        }
+
+        .element-top-space {
+            height: 10%;
+            width: 100%;
+        }
+
+        .element-data-area {
+            height: 80%;
+            width: 100%;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-evenly;
+
+            background-color: rgba(255, 255, 255, 0.94);
+
+        }
+
+        .element-weight {
+            font-size: 25px;
+            height: 25px;
+            font-weight: bold;
+            width: 80%;
+        }
+
+        .element-symbol {
+            font-size: 70px;
+            height: 70px;
+            font-weight: 750;
+            text-align: center;
+            width: 80%;
+        }
+
+        .element-name {
+            font-size: 12px;
+            height: 12px;
+            text-align: center;
+            width: 80%;
+        }
+
+        .element-oxidationNumbers {
+            font-size: 16px;
+            height: 18px;
+            font-weight: 750;
+            font-style: italic;
+            text-align: center;
+            width: 80%;
+
+            color: rgb(255, 80, 40);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="field"></div>
+    <script>
+        class ElementCard {
+            static count = 0; // 생성 시마다 카운트 업, 위치 정보에 활용하기 위한 임시의 값
+
+            constructor({ number, weight, symbol, name, oxidationNumbers, color, opacity } = {}) {
+                this.number = number;
+                this.weight = weight;
+                this.symbol = symbol;
+                this.name = name;
+                this.colorRGB = hexToRgb(color);
+                this.opacity = opacity;
+                this.oxidationNumbers = oxidationNumbers;
+
+                this.dragging = false;
+                this.offsetX = 0;
+                this.offsetY = 0;
+                this.elementCard = null;
+
+                this.createCard();
+            }
+
+            bringToFront() {
+                this.elementCard.style.zIndex = 9999;
+            }
+
+            sendToBack() {
+                this.elementCard.style.zIndex = 0;
+            }
+
+            setColor() {
+                const rgb = this.colorRGB;
+                this.elementCard.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.opacity})`;
+            }
+
+            createCard() {
+                this.elementCard = document.createElement('div');
+                this.elementCard.classList.add('element-card');
+                this.setColor();
+
+                const topSpace = document.createElement('div');
+                topSpace.classList.add('element-top-space');
+
+                const dataArea = document.createElement('div');
+                dataArea.classList.add('element-data-area');
+
+                const weightDiv = document.createElement('div');
+                weightDiv.classList.add('element-weight');
+                weightDiv.textContent = this.weight;
+
+                const symbolDiv = document.createElement('div');
+                symbolDiv.classList.add('element-symbol');
+                symbolDiv.textContent = this.symbol;
+
+                const nameDiv = document.createElement('div');
+                nameDiv.classList.add('element-name');
+                nameDiv.textContent = this.name;
+
+                const oxidationNumbersDiv = document.createElement('div');
+                oxidationNumbersDiv.classList.add('element-oxidationNumbers');
+                oxidationNumbersDiv.textContent = this.oxidationNumbers.join("  ");
+
+                dataArea.appendChild(weightDiv);
+                dataArea.appendChild(symbolDiv);
+                dataArea.appendChild(nameDiv);
+                dataArea.appendChild(oxidationNumbersDiv);
+
+                this.elementCard.appendChild(topSpace);
+                this.elementCard.appendChild(dataArea);
+
+                this.elementCard.addEventListener('mousedown', this.dragStart.bind(this));
+                document.addEventListener('mousemove', this.dragMove.bind(this));
+                document.addEventListener('mouseup', this.dragEnd.bind(this));
+
+                const fieldDiv = document.getElementById('field');
+                fieldDiv.appendChild(this.elementCard);
+
+                this.offsetX = (ElementCard.count % 9) * 150;
+                this.offsetY = (Math.floor(ElementCard.count / 9)) * 150;
+
+                this.elementCard.style.left = `${this.offsetX}px`;
+                this.elementCard.style.top = `${this.offsetY}px`;
+
+                ElementCard.count++;
+            }
+
+            dragStart(event) {
+                this.dragging = true;
+                this.bringToFront();
+
+                const rect = this.elementCard.getBoundingClientRect();
+
+                const fieldRect = document.getElementById('field').getBoundingClientRect();
+                this.offsetX = event.clientX - rect.left + fieldRect.left;
+                this.offsetY = event.clientY - rect.top + fieldRect.top;
+
+                this.elementCard.classList.add('dragging');
+
+            }
+
+            dragMove(event) {
+                if (this.dragging) {
+                    const x = event.clientX - this.offsetX;
+                    const y = event.clientY - this.offsetY;
+
+                    this.elementCard.style.left = `${x}px`;
+                    this.elementCard.style.top = `${y}px`;
+                }
+            }
+
+            dragEnd() {
+                this.dragging = false;
+                this.sendToBack();
+
+                this.elementCard.classList.remove('dragging');
+                this.elementCard.removeEventListener('mouseup', this.dragEnd.bind(this));
+            }
+        }
+
+        function hexToRgb(hex) {
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+
+            return { r, g, b };
+        }
+
+        const hydrogenCard = new ElementCard({ "number": "1", "weight": "1", "symbol": "H", "name": "hydrogen", "oxidationNumbers": ["+1"], "color": "FFFFFF", "opacity": 0.5 });
+        const lithiumCard = new ElementCard({ "number": "3", "weight": "7", "symbol": "Li", "name": "lithium", "oxidationNumbers": ["+1"], "color": "FFA07A", "opacity": 0.65 });
+        const berylliumCard = new ElementCard({ "number": "4", "weight": "9.4", "symbol": "Be", "name": "beryllium", "oxidationNumbers": ["+2"], "color": "C0C0C0", "opacity": 0.8 });
+        const boronCard = new ElementCard({ "number": "5", "weight": "11", "symbol": "B", "name": "boron", "oxidationNumbers": ["+3"], "color": "FF7F50", "opacity": 0.75 });
+        const carbonCard = new ElementCard({ "number": "6", "weight": "12", "symbol": "C", "name": "carbon", "oxidationNumbers": ["+4", "-4"], "color": "101010", "opacity": 0.95 });
+        const nitrogenCard = new ElementCard({ "number": "7", "weight": "14", "symbol": "N", "name": "nitrogen", "oxidationNumbers": ["+5", "+3", "-3"], "color": "8A2BE2", "opacity": 0.7 });
+        const oxygenCard = new ElementCard({ "number": "8", "weight": "16", "symbol": "O", "name": "oxygen", "oxidationNumbers": ["+6", "-2"], "color": "FF4500", "opacity": 0.85 });
+        const fluorineCard = new ElementCard({ "number": "9", "weight": "19", "symbol": "F", "name": "fluorine", "oxidationNumbers": ["-1"], "color": "00FF00", "opacity": 0.85 });
+        const sodiumCard = new ElementCard({ "number": "11", "weight": "23", "symbol": "Na", "name": "sodium", "oxidationNumbers": ["+1"], "color": "FA8072", "opacity": 0.65 });
+        const magnesiumCard = new ElementCard({ "number": "12", "weight": "24", "symbol": "Mg", "name": "magnesium", "oxidationNumbers": ["+2"], "color": "C0C0C0", "opacity": 0.75 });
+        const aluminumCard = new ElementCard({ "number": "13", "weight": "27.8", "symbol": "Al", "name": "aluminum", "oxidationNumbers": ["+3"], "color": "808080", "opacity": 0.75 });
+        const siliconCard = new ElementCard({ "number": "14", "weight": "28", "symbol": "Si", "name": "silicon", "oxidationNumbers": ["+4", "-4"], "color": "A52A2A", "opacity": 0.75 });
+        const phosphorusCard = new ElementCard({ "number": "15", "weight": "31", "symbol": "P", "name": "phosphorus", "oxidationNumbers": ["+3", "+5", "-3"], "color": "FFA500", "opacity": 0.7 });
+        const sulfurCard = new ElementCard({ "number": "16", "weight": "32", "symbol": "S", "name": "sulfur", "oxidationNumbers": ["+6", "+4", "+2", "-2"], "color": "FFFF00", "opacity": 0.8 });
+        const chlorineCard = new ElementCard({ "number": "17", "weight": "35.5", "symbol": "Cl", "name": "chlorine", "oxidationNumbers": ["+1", "+3", "+5", "+7", "-1"], "color": "00FF00", "opacity": 0.75 });
+        const potassiumCard = new ElementCard({ "number": "19", "weight": "39", "symbol": "K", "name": "potassium", "oxidationNumbers": ["+1"], "color": "FF1493", "opacity": 0.65 });
+        const calciumCard = new ElementCard({ "number": "20", "weight": "40", "symbol": "Ca", "name": "calcium", "oxidationNumbers": ["+2"], "color": "808080", "opacity": 0.8 });
+        const titaniumCard = new ElementCard({ "number": "22", "weight": "48", "symbol": "Ti", "name": "titanium", "oxidationNumbers": ["+2", "+3", "+4"], "color": "808080", "opacity": 0.8 });
+        const vanadiumCard = new ElementCard({ "number": "23", "weight": "51", "symbol": "V", "name": "vanadium", "oxidationNumbers": ["+2", "+3", "+4", "+5"], "color": "808080", "opacity": 0.8 });
+        const chromiumCard = new ElementCard({ "number": "24", "weight": "52", "symbol": "Cr", "name": "chromium", "oxidationNumbers": ["+2", "+3", "+6"], "color": "808080", "opacity": 0.8 });
+        const manganeseCard = new ElementCard({ "number": "25", "weight": "55", "symbol": "Mn", "name": "manganese", "oxidationNumbers": ["+2", "+3", "+4", "+6", "+7"], "color": "808080", "opacity": 0.8 });
+        const ironCard = new ElementCard({ "number": "26", "weight": "56", "symbol": "Fe", "name": "iron", "oxidationNumbers": ["+2", "+3"], "color": "808080", "opacity": 0.8 });
+        const cobaltCard = new ElementCard({ "number": "27", "weight": "59", "symbol": "Co", "name": "cobalt", "oxidationNumbers": ["+2", "+3"], "color": "808080", "opacity": 0.8 });
+        const nickelCard = new ElementCard({ "number": "28", "weight": "59", "symbol": "Ni", "name": "nickel", "oxidationNumbers": ["+2"], "color": "808080", "opacity": 0.8 });
+        const copperCard = new ElementCard({ "number": "29", "weight": "63", "symbol": "Cu", "name": "copper", "oxidationNumbers": ["+1", "+2"], "color": "808080", "opacity": 0.8 });
+        const zincCard = new ElementCard({ "number": "30", "weight": "65", "symbol": "Zn", "name": "zinc", "oxidationNumbers": ["+2"], "color": "808080", "opacity": 0.8 });
+        const arsenicCard = new ElementCard({ "number": "33", "weight": "75", "symbol": "As", "name": "arsenic", "oxidationNumbers": ["+3", "+5", "-3"], "color": "FF4500", "opacity": 0.7 });
+        const seleniumCard = new ElementCard({ "number": "34", "weight": "78", "symbol": "Se", "name": "selenium", "oxidationNumbers": ["+2", "+4", "+6", "-2"], "color": "FFA500", "opacity": 0.75 });
+        const bromineCard = new ElementCard({ "number": "35", "weight": "80", "symbol": "Br", "name": "bromine", "oxidationNumbers": ["+1", "+3", "+5", "+7", "-1"], "color": "A52A2A", "opacity": 0.7 });
+        const rubidiumCard = new ElementCard({ "number": "37", "weight": "85", "symbol": "Rb", "name": "rubidium", "oxidationNumbers": ["+1"], "color": "FF1493", "opacity": 0.65 });
+        const strontiumCard = new ElementCard({ "number": "38", "weight": "87", "symbol": "Sr", "name": "strontium", "oxidationNumbers": ["+2"], "color": "808080", "opacity": 0.8 });
+        const yttriumCard = new ElementCard({ "number": "39", "weight": "88", "symbol": "Y", "name": "yttrium", "oxidationNumbers": ["+3", "+4"], "color": "808080", "opacity": 0.8 });
+        const zirconiumCard = new ElementCard({ "number": "40", "weight": "90", "symbol": "Zr", "name": "zirconium", "oxidationNumbers": ["+4"], "color": "808080", "opacity": 0.8 });
+        const niobiumCard = new ElementCard({ "number": "41", "weight": "94", "symbol": "Nb", "name": "niobium", "oxidationNumbers": ["+5"], "color": "808080", "opacity": 0.8 });
+        const molybdenumCard = new ElementCard({ "number": "42", "weight": "96", "symbol": "Mo", "name": "molybdenum", "oxidationNumbers": ["+4", "+6"], "color": "808080", "opacity": 0.8 });
+        const rutheniumCard = new ElementCard({ "number": "44", "weight": "104", "symbol": "Ru", "name": "ruthenium", "oxidationNumbers": ["+3", "+4"], "color": "808080", "opacity": 0.8 });
+        const rhodiumCard = new ElementCard({ "number": "45", "weight": "104", "symbol": "Rh", "name": "rhodium", "oxidationNumbers": ["+3"], "color": "808080", "opacity": 0.8 });
+        const palladiumCard = new ElementCard({ "number": "46", "weight": "106", "symbol": "Pd", "name": "palladium", "oxidationNumbers": ["+2", "+4"], "color": "808080", "opacity": 0.8 });
+        const silverCard = new ElementCard({ "number": "47", "weight": "108", "symbol": "Ag", "name": "silver", "oxidationNumbers": ["+1"], "color": "808080", "opacity": 0.8 });
+        const cadmiumCard = new ElementCard({ "number": "48", "weight": "112", "symbol": "Cd", "name": "cadmium", "oxidationNumbers": ["+2"], "color": "808080", "opacity": 0.8 });
+        const indiumCard = new ElementCard({ "number": "49", "weight": "112", "symbol": "In", "name": "indium", "oxidationNumbers": ["+3"], "color": "808080", "opacity": 0.8 });
+        const tinCard = new ElementCard({ "number": "50", "weight": "118", "symbol": "Sn", "name": "tin", "oxidationNumbers": ["+2", "+4", "-4"], "color": "808080", "opacity": 0.8 });
+        const antimonyCard = new ElementCard({ "number": "51", "weight": "122", "symbol": "Sb", "name": "antimony", "oxidationNumbers": ["+3", "+5", "-3"], "color": "808080", "opacity": 0.8 });
+        const telluriumCard = new ElementCard({ "number": "52", "weight": "128", "symbol": "Te", "name": "tellurium", "oxidationNumbers": ["+2", "+4", "+6", "-2"], "color": "FFA500", "opacity": 0.75 });
+        const iodineCard = new ElementCard({ "number": "53", "weight": "127", "symbol": "I", "name": "iodine", "oxidationNumbers": ["+1", "+3", "+5", "+7", "-1"], "color": "800080", "opacity": 0.75 });
+        const cesiumCard = new ElementCard({ "number": "55", "weight": "133", "symbol": "Cs", "name": "cesium", "oxidationNumbers": ["+1"], "color": "FF1493", "opacity": 0.65 });
+        const bariumCard = new ElementCard({ "number": "56", "weight": "137", "symbol": "Ba", "name": "barium", "oxidationNumbers": ["+2"], "color": "808080", "opacity": 0.8 });
+    </script>
+</body>
+
+</html>
